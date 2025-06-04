@@ -9,6 +9,17 @@ from flask import make_response
 app = Flask(__name__)
 
 
+## csv, excel 파일 경로 설정 (vercel 디렉토리 구조로)
+BASE_DIR = os.path.dirname(__file__)  # api/ 폴더의 절대경로
+
+def load_csv(filename):
+    return pd.read_csv(os.path.join(BASE_DIR, filename))
+
+def load_excel(filename):
+    return pd.read_excel(os.path.join(BASE_DIR, filename), engine='openpyxl')
+
+# pd.read_csv -> load_csv 변경
+# pd.read_csv -> load_excel 변경
 
 # ============================================
 # 1. 공통 유틸 – 은행 로고 경로 -----------------------------------
@@ -24,10 +35,10 @@ def logo_filename(bank_name):
     return f"bank_logos/{filename}" if filename else "bank_logos/default.png"
 
 # ✔ 예금/적금 데이터 로드
-deposit_tier1 = pd.read_csv('예금_1금융권_포함.csv')
-deposit_tier2 = pd.read_csv('예금_2금융권.csv')
-savings_tier1 = pd.read_csv('적금_1금융권_포함.csv')
-savings_tier2 = pd.read_csv('적금_2금융권.csv')
+deposit_tier1 = load_csv('예금_1금융권_포함.csv')
+deposit_tier2 = load_csv('예금_2금융권.csv')
+savings_tier1 = load_csv('적금_1금융권_포함.csv')
+savings_tier2 = load_csv('적금_2금융권.csv')
 
 # ✔ 지역 컬럼 매핑 추가
 def normalize_name(name):
@@ -65,7 +76,7 @@ region_map_raw = {
 }
 region_map = {normalize_name(k): v for k, v in region_map_raw.items()}
 # 로고 매핑 딕셔너리 생성
-logo_df = pd.read_csv('logo_bank.csv')
+logo_df = load_csv('logo_bank.csv')
 bank_logo_map = dict(zip(logo_df['은행명'], logo_df['로고파일명']))
 print(logo_df)
 
@@ -81,7 +92,7 @@ for df in [deposit_tier1, deposit_tier2, savings_tier1, savings_tier2]:
     df['지역'] = df['정제명'].map(region_map).fillna('기타')
     df["logo"]  = df["금융회사명"].apply(logo_filename)
 def clean_loan_data(file):
-    df = pd.read_csv(file)
+    df = load_csv(file)
     df = df.rename(columns=lambda x: x.strip())
     df = df.rename(columns={
         '금리': '최저 금리(%)',
@@ -187,7 +198,7 @@ def loans_page():
 
 
 # ✔ 금융용어사전 로드 및 초성 기준
-terms_df = pd.read_excel('통계용어사전.xlsx')
+terms_df = load_excel('통계용어사전.xlsx')
 def get_initial_consonant(word):
     if not word: return ''
     c = word[0]
@@ -197,7 +208,7 @@ def get_initial_consonant(word):
     return 'A-Z' if re.match(r'[A-Za-z]', c) else c
 terms_df['초성'] = terms_df['용어'].apply(get_initial_consonant)
 
-car_df = pd.read_csv('naver_car_prices.csv')
+car_df = load_csv('naver_car_prices.csv')
 
 # 필터 유틸 함수
 def filter_products(df, period, bank, region):
@@ -430,7 +441,7 @@ def region_data():
     region = region.replace("특별시", "").replace("광역시", "").replace("도", "").strip()
 
     # CSV 컬럼명: '시도', '가격'
-    house_df = pd.read_csv('주택_시도별_보증금.csv')
+    house_df = load_csv('주택_시도별_보증금.csv')
     avg_prices = house_df.groupby('시도')['가격'].mean().round(1).to_dict()
     price = avg_prices.get(region, '정보없음')
 
@@ -497,13 +508,13 @@ def plus_region_map():
 
 @app.route('/plus/travel', methods=['GET'])
 def travel_home():
-    travel_df = pd.read_csv('travel.csv')
+    travel_df = load_csv('travel.csv')
     cities = travel_df['도시'].tolist()
     return render_template('travel_select.html', cities=cities)
 
 @app.route('/plus/travel-plan', methods=['GET', 'POST'])
 def travel_plan():
-    travel_df = pd.read_csv("travel.csv")
+    travel_df = load_csv("travel.csv")
     cities = travel_df['도시'].tolist()
 
     if request.method == 'POST':
