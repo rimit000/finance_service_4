@@ -7,7 +7,8 @@ import os
 
 from flask import make_response
 # 로깅 설정
-app = Flask(__name__, template_folder='templates', static_folder='../static')
+#app = Flask(__name__, template_folder='templates', static_folder='../static')
+app = Flask(__name__)
 
 
 ## csv, excel 파일 경로 설정 (vercel 디렉토리 구조로)
