@@ -132,36 +132,35 @@
     {% endif %}
 
     <!-- Footer -->
-<footer style="width: 100%; background: #EDF2F4; padding: 40px 5%; color: #717171; font-family: 'Nunito', sans-serif;">
-  <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 20px;">
+<footer style="width: 100%; background: #EDF2F4; padding: 40px 5%; font-family: 'Nunito', sans-serif; color: #717171;">
+  <div style="display: grid; grid-template-columns: 1fr 2fr 1.5fr; gap: 32px; align-items: start;">
 
-    <!-- 왼쪽: 팀명 -->
-    <div style="min-width: 200px;">
-      <div style="font-size: 20px; font-weight: 500; margin-bottom: 8px;">프로젝트 팀 모아플러스</div>
+    <!-- 왼쪽: 팀 소개 -->
+    <div>
+      <div style="font-size: 20px; font-weight: 600; margin-bottom: 8px;">프로젝트 팀 모아플러스</div>
       <div style="font-size: 18px;">PROJECT TEAM MOAPLUS</div>
     </div>
 
-    <!-- 가운데: 정보 목록 -->
-    <div style="display: flex; flex-direction: column; font-size: 16px; line-height: 1.6; flex: 1; min-width: 300px;">
-      <div><strong>Built with</strong> &nbsp;&nbsp;Python, Flask, HTML5, CSS3, JavaScript</div>
-      <div><strong>Design tool</strong> &nbsp;&nbsp;Figma</div>
-      <div><strong>Data source</strong> &nbsp;&nbsp;Financial Supervisory Service (Open API)</div>
-      <div><strong>Project management tools</strong> &nbsp;&nbsp;Notion, Slack</div>
-      <div><strong>Development Period</strong> &nbsp;&nbsp;2025.05.07 ~ 2025.06.20</div>
+    <!-- 가운데: 기술 스택 -->
+    <div style="display: grid; grid-template-columns: auto 1fr; row-gap: 10px; column-gap: 12px; font-size: 16px; line-height: 1.6;">
+      <div style="font-weight: bold;">Built with</div> <div>Python, Flask, HTML5, CSS3, JavaScript</div>
+      <div style="font-weight: bold;">Design tool</div> <div>Figma</div>
+      <div style="font-weight: bold;">Data source</div> <div>Financial Supervisory Service (Open API)</div>
+      <div style="font-weight: bold;">Project management tools</div> <div>Notion, Slack</div>
+      <div style="font-weight: bold;">Development Period</div> <div>2025.05.07 ~ 2025.06.20</div>
     </div>
 
     <!-- 오른쪽: 로고 및 고지 -->
-    <div style="min-width: 260px; display: flex; flex-direction: column; align-items: flex-start;">
-      <div style="display: flex; align-items: center; gap: 10px;">
+    <div style="text-align: right;">
+      <div style="display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-bottom: 10px;">
         <img src="{{ url_for('static', filename='knu_logo.png') }}" alt="경북대학교 로고" style="width: 48px; height: 48px; opacity: 0.5;" />
         <div>
           <div style="font-size: 18px;">경북대학교 KDT 7기</div>
           <div style="font-size: 16px;">김수연 노동림 오유솔 최수창</div>
         </div>
       </div>
-      <div style="font-size: 12px; margin-top: 12px;">
-        이 웹사이트는 교육 및 포트폴리오 목적으로 제작되었으며, 상업적 목적이 아닙니다.
-        <br/>
+      <div style="font-size: 12px; margin-top: 12px; line-height: 1.5;">
+        이 웹사이트는 교육 및 포트폴리오 목적으로 제작되었으며, 상업적 목적이 아닙니다.<br/>
         This website was created for educational and portfolio purposes only, and is not intended for commercial use.
       </div>
     </div>
