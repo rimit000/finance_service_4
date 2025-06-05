@@ -45,21 +45,39 @@
   <h1 class="text-center fw-bold section-title">대출 다 모아</h1>
   <p class="text-center text-muted mb-4">은행별 대출 상품을 손쉽게 비교해보세요</p>
 
-  <!-- 필터 바 -->
-  <form method="get" action="/loans" class="filter-bar d-flex flex-wrap justify-content-between align-items-center gap-3">
-    <div class="d-flex flex-wrap align-items-center gap-3">
-      <label for="amount">대출 금액 (원):</label>
-      <input type="number" name="amount" id="amount" class="form-control" style="width: 180px;" value="{{ input_amount or 1000000 }}">
+<div class="filter-bar d-flex flex-wrap justify-content-between align-items-center gap-3">
+  <!-- 대출 금액 입력창 -->
+  <div>
+    <label for="amount">대출 금액 (원):</label>
+    <input type="number" name="amount" id="amount" class="form-control d-inline-block" style="width: 180px;" value="{{ input_amount or 1000000 }}"
+      onchange="applyFilter(getSelectedType(), this.value)">
+  </div>
 
-      {% for option in ['전체', '비상금대출', '새희망홀씨', '무직자대출', '사잇돌', '햇살론'] %}
-        <label class="form-check-label">
-          <input type="radio" name="loanType" value="{{ option }}" {% if selected_types and selected_types[0] == option %}checked{% endif %} class="form-check-input">
-          {{ option }}
-        </label>
-      {% endfor %}
-    </div>
-    <button type="submit" class="btn btn-outline-primary btn-sm">필터 적용</button>
-  </form>
+  <!-- 필터 버튼들 -->
+  <div class="d-flex flex-wrap gap-2">
+    {% for option in ['전체', '비상금대출', '새희망홀씨', '무직자대출', '사잇돌', '햇살론'] %}
+      <button type="button" class="btn {% if option in selected_types or (not selected_types and option == '전체') %}btn-success{% else %}btn-outline-success{% endif %}"
+        onclick="applyFilter('{{ option }}', document.getElementById('amount').value)">
+        {{ option }}
+      </button>
+    {% endfor %}
+  </div>
+</div>
+
+<script>
+  function applyFilter(type, amount) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('loanType', type);
+    url.searchParams.set('amount', amount || 1000000);
+    window.location.href = url.toString();
+  }
+
+  function getSelectedType() {
+    const activeBtn = document.querySelector('.filter-bar .btn-success');
+    return activeBtn ? activeBtn.innerText.trim() : '전체';
+  }
+</script>
+
 
   <!-- 대출 종류별 설명 -->
   {% if selected_types and selected_types[0] != '전체' %}
