@@ -43,7 +43,7 @@
 </style>
 
 <div class="container my-5">
-  <h1 class="car-section-title">🚗 CAR MOA</h1>
+  <h1 class="car-section-title"> CAR MOA</h1>
   <p class="car-subtext">한눈에 보는 중고차 시세, 모아 플러스 중고차 모아보기</p>
 
   <div class="d-flex justify-content-center gap-3 my-4">
@@ -69,7 +69,7 @@
             <div class="text-center w-75 mx-auto">
               <img src="{{ url_for('static', filename='car/' ~ car['이미지파일명']) }}" class="car-img" alt="{{ car['모델명'] }}">
               <h3 class="mt-4">{{ car['모델명'] }}</h3>
-              <p>🚘 평균 가격: <strong>{{ "{:,}".format(car['평균가격']) }}</strong> 만원</p>
+              <p> 평균 가격: <strong>{{ "{:,}".format(car['평균가격']) }}</strong> 만원</p>
               <label for="months{{ idx }}">⏱️ 목표 기간:</label>
               <select id="months{{ idx }}" class="form-select w-50 mx-auto my-2" data-price="{{ car['평균가격'] }}" onchange="calculateAndRecommend(this, {{ car['평균가격'] }}, {{ idx }})">
                 <option disabled>선택</option>
@@ -77,7 +77,7 @@
                 <option value="{{ period }}">{{ period }}개월</option>
                 {% endfor %}
               </select>
-              <p>💰 월 저축액: <span class="monthly-saving" id="monthly{{ idx }}">-</span></p>
+              <p> 월 저축액: <span class="monthly-saving" id="monthly{{ idx }}">-</span></p>
               <div class="recommended-savings" id="recommend{{ idx }}">-</div>
               <canvas id="chart{{ idx }}" height="150" class="mt-4"></canvas>
             </div>
