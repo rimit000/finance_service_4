@@ -108,29 +108,24 @@ def clean_loan_data(file):
     return df
 
 
-loan_files = ['새희망홀씨_정리완료.csv','소액_비상금대출_정리완료.csv','무직자대출_정리완료.csv','사잇돌_정리완료.csv','햇살론_정제완료_v3.csv']
+loan_files = {
+    '새희망홀씨_정리완료.csv': '새희망홀씨',
+    '소액_비상금대출_정리완료.csv': '비상금대출',
+    '무직자대출_정리완료.csv': '무직자대출',
+    '사잇돌_정리완료.csv': '사잇돌',
+    '햇살론_정제완료_v3.csv': '햇살론'
+}
+
 loan_data = pd.concat([clean_loan_data(f) for f in loan_files], ignore_index=True)
 
-def classify_loan_type(name):
-    name = str(name).lower()
-    name = re.sub(r'[^가-힣a-z0-9]', '', name)  # 괄호, 공백, 특수문자 제거
-
-    if '햇살론_' in name :
-        return '햇살론'
-    elif '비상금' in name :
-        return '비상금대출'
-    elif '새희망홀씨' in name:
-        return '새희망홀씨'
-    elif '무직자' in name:
-        return '무직자대출'
-    elif '사잇돌' in name:
-        return '사잇돌'
-    elif '신용대출' in name:
-        return '신용대출'
-    else:
-        if '햇살' in name:
-            return '햇살론'
-        return '기타'
+# 데이터프레임을 모아서 concat
+loan_data = pd.concat(
+    [
+        clean_loan_data(file).assign(상품유형=loan_type)
+        for file, loan_type in loan_files.items()
+    ],
+    ignore_index=True
+)
 
 loan_data['대출유형'] = loan_data['상품명'].apply(classify_loan_type)
 loan_data["logo"] = loan_data["금융회사명"].apply(logo_filename)
