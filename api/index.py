@@ -121,12 +121,12 @@ def classify_loan_type(name):
         return '비상금대출'
     elif '새희망홀씨' in name:
         return '새희망홀씨'
+    elif '무직자' in name:
+        return '무직자대출'
     elif '사잇돌' in name:
         return '사잇돌'
     elif '신용대출' in name:
         return '신용대출'
-    elif '무직자대출' in name:
-        return '무직자대출'
     else:
         if '햇살' in name:
             return '햇살론'
