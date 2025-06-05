@@ -1,300 +1,689 @@
 {% extends 'base.html' %}
-{% block title %}{{ product_type }} 상품{% endblock %}
-
 {% block content %}
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-<style>
-  :root {
-    --moa-green: #00d8b0;
-    --moa-lightgreen: #b2f5ea;
-    --moa-bg: #f8fffd;
-    --moa-dark: #020715;
-  }
+  <!-- 1) Bootstrap/Select2 CSS 로드 -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+  <link
+    href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css"
+    rel="stylesheet"
+  />
 
-  .filter-box {
-    border: 2px solid var(--moa-lightgreen);
-    border-radius: 15px;
-    background-color: var(--moa-bg);
-    padding: 25px 20px;
-    margin-bottom: 30px;
-  }
+  <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
 
-  .filter-box label {
-    font-weight: 600;
-    margin-right: 10px;
-  }
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
 
-  .moa-table th, .moa-table td {
-    vertical-align: middle;
-    text-align: center;
-    border: 1px solid var(--moa-lightgreen) !important;
-  }
-
-  .moa-table th {
-    background-color: #f8f9fa;
-    color: var(--moa-dark);
-    font-weight: bold;
-  }
-
-  #pagination-container .btn-sm {
-    border: 2px solid white !important;
-    color: var(--moa-green) !important;
-    background-color: transparent;
-  }
-
-  #pagination-container .btn-sm:hover {
-    background-color: #e6ffe6 !important;
-    color: var(--moa-green) !important;
-    border: 2px solid white !important;
-  }
-
-  #pagination-container .btn-dark {
-    background-color: #e6ffe6 !important;
-    color: var(--moa-green) !important;
-    border: 2px solid white !important;
-  }
-</style>
-
-<div class="container my-5">
-  <h1 class="display-5 fw-bold text-center">{{ product_type }} 상품</h1>
-
-  <div class="filter-box">
-    <div class="text-center mb-4">
-      <label for="amountInput" class="form-label fw-bold">예치금 입력 (원)</label>
-      <input type="number" id="amountInput" class="form-control w-25 d-inline-block" value="1000000" step="10000" min="0">
-    </div>
-
-    {% if product_type != '대출' %}
-    <div class="mb-3 text-center">
-      <button class="btn btn-outline-dark active" data-period="">전체</button>
-      {% for p in periods if p != 1 and p != 3 %}
-      <button class="btn btn-outline-dark" data-period="{{ p }}">{{ p }}개월</button>
-      {% endfor %}
-    </div>
-    {% endif %}
-
-    <div class="mb-3 text-center">
-      <button class="btn btn-outline-primary active" data-group="전체" onclick="setBankGroup('전체')">전체</button>
-      <button class="btn btn-outline-primary" data-group="1금융권" onclick="setBankGroup('1금융권')">1금융권</button>
-      <button class="btn btn-outline-primary" data-group="2금융권" onclick="setBankGroup('2금융권')">2금융권</button>
-    </div>
-
-    <div class="mb-3 text-center">
-      <select id="bankSelect" class="form-select w-50 d-inline-block" multiple></select>
-    </div>
-
-    <div class="mb-3 text-center">
-      <select id="regionSelect" class="form-select w-50 d-inline-block">
-        <option value="">전체 지역</option>
-        {% for region in regions %}
-        <option value="{{ region }}">{{ region }}</option>
-        {% endfor %}
-      </select>
-    </div>
-
-    <div class="text-center mb-4">
-      <button id="searchBtn" class="btn btn-primary">검색</button>
-    </div>
-  </div>
-
-  <div class="table-responsive">
-    <table class="table table-bordered moa-table">
-      <thead>
-        <tr>
-          <th>번호</th>
-          <th>금융회사명</th>
-          <th>상품명</th>
-          <th>세전금리</th>
-          <th>세후수령액</th>
-          <th>자세히 보기</th>
-        </tr>
-      </thead>
-      <tbody id="product-tbody"></tbody>
-    </table>
-    <div id="pagination-container" class="text-center mt-4"></div>
-  </div>
-</div>
-
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<script>
-  let selectedPeriod = "";
-  let selectedBanks = [];
-  let selectedRegion = "";
-  let selectedBankGroup = '전체';
-  const allBanks = {{ banks | tojson }};
-  let currentPage = 1;
-  const itemsPerPage = 15;
-  let allProducts = [];
-
-  function calculateAfterTax(amount, rate, months = 12) {
-    let grossInterest = amount * (rate / 100) * (months / 12);
-    let tax = grossInterest * 0.154;
-    let afterTax = amount + (grossInterest - tax);
-    return Math.round(afterTax).toLocaleString('ko-KR') + '원';
-  }
-
-  function loadProducts() {
-    let bankListParam = selectedBanks.length > 0 ? selectedBanks : (selectedBankGroup !== '전체' ? allBanks[selectedBankGroup] : []);
-    const banksParam = bankListParam.length > 0 ? bankListParam.join('|') : '';
-    const amount = parseFloat(document.getElementById('amountInput').value) || 0;
-    let query = `bank=${encodeURIComponent(banksParam)}`;
-    if (selectedPeriod) query += `&period=${selectedPeriod}`;
-    if (selectedRegion) query += `&region=${encodeURIComponent(selectedRegion)}`;
-    query += `&amount=${amount}`;
-
-    fetch(`/api/{{ product_type_url }}?${query}`)
-      .then(response => response.json())
-      .then(result => {
-        allProducts = result.products;
-        currentPage = 1;
-        renderPage();
-      });
-  }
-
-  function renderPage() {
-    const tbody = document.getElementById('product-tbody');
-    tbody.innerHTML = '';
-    const totalPages = Math.ceil(allProducts.length / itemsPerPage);
-    const start = (currentPage - 1) * itemsPerPage;
-    const end = start + itemsPerPage;
-    const pageItems = allProducts.slice(start, end);
-    const amount = parseFloat(document.getElementById('amountInput').value) || 0;
-
-    if (pageItems.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6">조건에 맞는 상품이 없습니다.</td></tr>';
-      return;
+  <!-- {# ----------------------------------------------------------- #}
+  {# 2) 커스텀 CSS (화면 상단 헤더, 필터 카드, 테이블, 페이지네이션) #}
+  {# ----------------------------------------------------------- #} -->
+  <style>
+    /* --------------------- 공통 CSS 변수 --------------------- */
+    :root {
+      --moa-green: #8AE4D7;         
+      --moa-light: #f8f9fa;         
+      --moa-dark-text: #020715;     
+      --moa-border: #E0E5F3;        
+      --moa-hover: #00bfa5;         
     }
 
-    pageItems.forEach((p, idx) => {
-  const rateStr = String(p['최고우대금리(%)']).replace('%', '').trim();
-  const rate = parseFloat(rateStr) || 0;
-  const months = parseInt(p['저축기간(개월)']) || 12;
-  const afterTax = calculateAfterTax(amount, rate, months);
-  const uid = `collapseRow${start + idx}`;
+    /* -------------------- 상단 헤더 영역 -------------------- */
+    .moa-header {
+      background: white;
+      text-align: center;
+      padding: 80px 20px 20px;
+      font-family: 'NoonnuBasicGothic', sans-serif;
+    }
+    .moa-header .moa-bar {
+      width: 53px;
+      height: 10px;
+      background-color: var(--moa-green);
+      margin: 20px auto 30px;
+    }
+    .moa-header h1 {
+      font-size: 3.75rem; /* 60px 정도 */
+      font-weight: 700;
+      color: var(--moa-dark-text);
+      letter-spacing: 1.2px;
+      margin-bottom: 10px;
+    }
+    .moa-header p {
+      font-size: 1.25rem;
+      color: #717171;
+      letter-spacing: 0.5px;
+      margin: 0;
+      font-weight: 400;
+    }
 
-  tbody.innerHTML += `
-    <tr>
-      <td>${start + idx + 1}</td>
-      <td>
-        <img src="/static/${p['logo']}" class="bank-logo me-2" style="height: 24px;" alt="로고">
-        ${p['금융회사명']}
-      </td>
-      <td>${p['상품명']}</td>
-      <td>${rate.toFixed(2)}%</td>
-      <td>${afterTax}</td>
-      <td>
-        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="collapse" data-bs-target="#${uid}">
-          자세히 보기
-        </button>
-      </td>
-    </tr>
-    <tr class="collapse" id="${uid}">
-      <td colspan="6">
-        <div class="bg-light p-3 rounded text-start">
-          <p><strong>▶ 만기이자:</strong> ${p['만기이자'] || '정보 없음'}</p>
-          <p><strong>▶ 우대조건:</strong> ${p['우대조건'] || '정보 없음'}</p>
-          <p><strong>▶ 가입대상:</strong> ${p['가입대상'] || '정보 없음'}</p>
-          <p><strong>▶ 금리유형:</strong> ${p['금리유형'] || '정보 없음'}</p>
-          <p><strong>▶ 적립유형:</strong> ${p['적립유형'] || '정보 없음'}</p>
-          <p><strong>▶ 저축기간:</strong> ${p['저축기간(개월)'] || '정보 없음'}개월</p>
-          <p><strong>▶ 금융권:</strong> ${p['금융권'] || '정보 없음'}</p>
-          <p><strong>▶ 상환 방식:</strong> ${p['상환 방식'] || '정보 없음'}</p>
-          <div class="text-end mt-2">
-            <button class="btn btn-sm btn-secondary"
-              onclick="bootstrap.Collapse.getOrCreateInstance(document.getElementById('${uid}')).hide()">
-              닫기
-            </button>
+    /* ------------------ 필터 카드(가로 바) ------------------ */
+    .filter-card {
+      background-color: #ffffff;
+      border: 1px solid var(--moa-border);
+      border-radius: 4px;
+      box-shadow: 1px 1px 1px #0000000a, 0px 2px 6px #131b320f;
+      padding: 16px 24px;
+      margin-bottom: 40px;
+      font-family: 'NoonnuBasicGothic', sans-serif;
+      font-weight: 300;
+    }
+    /* 각 컬럼 사이 간격 */
+    .filter-card .form-label {
+      font-weight: 400;
+      margin-bottom: 6px;
+      color: var(--moa-dark-text);
+    }
+    .filter-card .form-select,
+    .filter-card .form-control {
+      border: 1px solid var(--moa-border);
+      border-radius: 4px;
+      height: 44px;
+      font-size: 1rem;
+    }
+    .filter-card .form-control:focus,
+    .filter-card .form-select:focus {
+      border-color: var(--moa-green);
+      box-shadow: 0 0 0 0.2rem rgba(0,196,139,0.25);
+    }
+
+    /* 은행 그룹 버튼 (pill 스타일) */
+    .bank-group-btns {
+      display: inline-flex;               
+      background-color: #fffdfd;            
+      border-radius: 4px;                    
+      overflow: hidden;   
+      z-index: 1;
+      box-shadow: 2px 2px 6px rgba(124, 132, 153, 0.3);
+      height: 48px;
+      align-items: center; 
+
+      padding-left: 4px;
+      padding-right: 4px;
+    }         
+
+    .bank-group-btns .btn-outline:hover {
+      background-color: #fdfdfd;
+      border-radius: 4px;    
+      color: #00C4A8;  
+      box-shadow: 2px 2px 6px rgba(124, 132, 153, 0.3);
+    }
+    .bank-group-btns .btn-active {
+      background-color: #fdfdfd;
+      border-radius: 4px;    
+      color: #000000;
+    }
+
+    /* 검색 버튼 */
+    #searchBtn {
+      background-color: var(--moa-green);
+      color: rgb(0, 0, 0);
+      font-weight: 500;
+      height: 44px;
+      font-size: 1rem;
+      border-radius: 6px;
+    }
+    #searchBtn:hover {
+      background-color: #00C4A8; 
+    }
+
+    /* --------------------- 테이블 스타일 --------------------- */
+    
+ /* --------------------- 테이블 스타일 --------------------- */
+    .moa-table {
+      width: 100%;
+      border-collapse: collapse;
+      border-spacing: 0px;
+      font-family: 'NoonnuBasicGothic', sans-serif;
+    }
+    .moa-table thead th {
+      background: #ffffff;
+      border: none;
+      border-bottom: 1px solid var(--moa-border);
+      color: var(--moa-dark-text);
+      font-weight: 300;
+      padding: 12px 8px;
+      text-align: center;
+      vertical-align: middle;
+      box-shadow: 1px 1px 1px #0000000a, 0px 2px 6px #131b320f;
+    }
+    .moa-table thead th:first-child {
+      border-left: 1px solid var(--moa-border);
+      border-top-left-radius: 2px;
+      border-bottom-left-radius: 2px;
+    }
+    .moa-table thead th:last-child {
+      border-right: 1px solid var(--moa-border);
+      border-top-right-radius: 2px;
+      border-bottom-right-radius: 2px;
+    }
+
+
+    /* --------------------- 테이블 바디(상품 행) --------------------- */
+
+  .moa-table tbody tr {
+      background: #ffffff;
+      border: none;
+      border-radius: 0;
+      border-bottom: 1px solid var(--moa-border);
+      transition: background 0.1s ease-in-out;
+    }
+    .moa-table tbody tr:last-child {
+      border-bottom: none;
+    }
+    .moa-table tbody tr:hover {
+      background: var(--moa-hover);
+    }
+    .moa-table tbody td {
+      padding: 12px 8px;
+      vertical-align: middle;
+      text-align: center;
+      border: none;
+      font-family: 'NoonnuBasicGothic', sans-serif;
+    }
+    .moa-table tbody tr td:nth-child(2),
+    .moa-table tbody tr td:nth-child(3) {
+      text-align: left;
+      padding-left: 16px;
+    }
+    .moa-table img.bank-logo {
+      height: 24px;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+
+    /* “자세히 보기” Collapse 토글 아이콘 */
+    .moa-table .btn-toggle {
+      color: var(--moa-green);
+      font-size: 1rem;
+      padding: 4px 8px;
+    }
+    .moa-table .btn-toggle:hover {
+      background-color: transparent;
+      color: #00C4A8;
+    }
+
+    /* Collapse 된 세부 영역 */
+    .collapse-row {
+      background-color: #f8f9fa;
+    }
+    .collapse-row td {
+      padding: 12px 16px;
+      text-align: left;
+      color: #444;
+    }
+        /* ------------------ 예치금 입력(input+₩ 기호) 스타일 ------------------ */
+    .input-group-text {
+      background-color: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      border-top-left-radius: 0 !important;
+      border-bottom-left-radius: 0 !important;
+      margin-left: -1px;
+    }
+    #amountInput {
+      border-radius: 4px;
+      text-align: left !important; 
+    }
+    .currency-symbol {
+      color:#00C4A8;
+      font-weight: 500;
+    }
+
+    /* ------------------ Select2 “은행 선택” 스타일 ------------------ */
+    #bankSelect.select2-hidden-accessible + .select2-container {
+      width: 100% !important;
+    }
+    #bankSelect.select2-hidden-accessible + .select2-container .select2-selection {
+      height: 44px !important;
+      border: 1px solid var(--moa-border) !important;
+      border-radius: 4px !important;
+      background-color: #ffffff !important;
+      box-shadow: none !important;
+    }
+    #bankSelect.select2-hidden-accessible + .select2-container 
+      .select2-selection__rendered {
+      display: flex;
+      align-items: center;
+      padding-left: 0.75rem !important;
+      font-size: 1rem;
+      color: #495057;
+    }
+    #bankSelect.select2-hidden-accessible + .select2-container 
+      .select2-selection__arrow {
+      right: 0.75rem;
+      top: 0;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #bankSelect.select2-hidden-accessible + .select2-container 
+      .select2-selection__rendered .select2-selection__choice {
+      display: none !important;
+    }
+    #bankSelect.select2-hidden-accessible + .select2-container 
+      .select2-selection:focus {
+      outline: none !important;
+      border-color: var(--moa-green) !important;
+      box-shadow: 0 0 0 0.2rem rgba(138,228,215,0.25) !important;
+    }
+
+
+    /* ------------------ 페이지네이션 스타일 ------------------ */
+    #pagination-container {
+      display: flex;
+      justify-content: center;
+      margin-top: 24px;
+    }
+    #pagination-container .page-btn {
+      border: 1px solid #E0E5F3;
+      color: #333;
+      background-color: #fffdfd;        
+      padding: 6px 15px;
+      margin: 0 4px;
+      border-radius: 4px;
+      font-size: 0.99rem;
+      cursor: pointer;
+      font-family: 'NoonnuBasicGothic', sans-serif;
+    }
+    #pagination-container .page-btn:hover {
+      background-color: #C4F0DC;
+      border-color: var(--moa-green);
+      color: var(--moa-dark-text);
+    }
+    #pagination-container .page-btn.active {
+      color: #333;
+    }
+</style>
+<!-- body -->
+  <div class="container my-5">
+    <!-- 상단 헤더 -->
+    <div class="moa-header mb-4">
+      <div class="moa-bar"></div>
+      <h1>예금 다 MOA</h1>
+      <p>간편 검색으로 최적의 예금 상품을 확인해 보세요</p>
+    </div>
+
+    <!-- 필터 카드(가로 바) : form으로 감싸기 -->
+    <div class="filter-card mb-5">
+      <form id="filterForm" class="row gx-3 gy-2 align-items-end">
+        {% if product_type != '대출' %}
+          <div class="col-md-2 col-sm-4">
+            <label for="periodSelect" class="form-label">기간</label>
+            <select id="periodSelect" class="form-select">
+              <option value="">전체</option>
+              {% for p in periods if p != 1 and p != 3 %}
+                <option value="{{ p }}">{{ p }}개월</option>
+              {% endfor %}
+            </select>
+          </div>
+        {% endif %}
+
+        <div class="col-md-2 col-sm-4">
+          <label for="regionSelect" class="form-label">지역</label>
+          <select id="regionSelect" class="form-select">
+            <option value="">전체</option>
+            {% for region in regions %}
+              <option value="{{ region }}">{{ region }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-2 col-sm-4">
+          <label for="amountInput" class="form-label">예치금 입력</label>
+          <div class="input-group">
+            <input
+              type="text"
+              id="amountInput"
+              class="form-control"
+              value="1,000,000"
+              inputmode="numeric"
+            />
+            <span class="input-group-text currency-symbol">₩</span>
           </div>
         </div>
-      </td>
-    </tr>
-  `;
-});
-    renderPagination(totalPages);
-  }
 
-  function renderPagination(totalPages) {
-    const container = document.getElementById('pagination-container');
-    let html = `<div class="text-center">`;
-    const maxVisible = 5;
-    const startPage = Math.floor((currentPage - 1) / maxVisible) * maxVisible + 1;
-    const endPage = Math.min(startPage + maxVisible - 1, totalPages);
+        <div class="col-md-3 col-sm-6">
+          <label class="form-label d-block">은행</label>
+          <div class="btn-group bank-group-btns" role="group" aria-label="은행 그룹">
+            <button
+              type="button"
+              class="btn btn-outline btn-active"
+              data-group="전체"
+              onclick="setBankGroup('전체')"
+              id="group-btn-전체"
+            >전체</button>
+            <button
+              type="button"
+              class="btn btn-outline"
+              data-group="1금융권"
+              onclick="setBankGroup('1금융권')"
+              id="group-btn-1금융권"
+            >1금융권</button>
+            <button
+              type="button"
+              class="btn btn-outline"
+              data-group="2금융권"
+              onclick="setBankGroup('2금융권')"
+              id="group-btn-2금융권"
+            >2금융권</button>
+          </div>
+        </div>
 
-    if (startPage > 1) {
-      html += `<button class="btn btn-sm btn-outline-primary mx-1" onclick="goToPage(${startPage - 1})">이전</button>`;
+        <div class="col-md-2 col-sm-6">
+          <label for="bankSelect" class="form-label d-block">&nbsp;</label>
+          <select id="bankSelect" class="form-select" multiple   data-placeholder="은행을 선택하세요"><option></option>></select>
+        </div>
+
+        <div class="col-md-1 col-sm-4">
+          <label class="form-label d-block">&nbsp;</label>
+          <button type="submit" id="searchBtn" class="btn w-100">검색</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- 상품 테이블 -->
+    <div class="table-responsive">
+      <table class="moa-table">
+        <thead>
+          <tr>
+            <th style="width: 5%;">번호</th>
+            <th style="width: 20%;">금융회사명</th>
+            <th style="width: 30%;">상품명</th>
+            <th style="width: 15%;">세전 금리</th>
+            <th style="width: 15%;">세후 수령액</th>
+            <th style="width: 15%;">자세히 보기</th>
+          </tr>
+        </thead>
+        <tbody id="product-tbody">
+        </tbody>
+      </table>
+      <div id="pagination-container"></div>
+    </div>
+  </div>
+  </div> {# /.container #}
+
+ <!-- {# ----------------------------------------------------------- #}
+  {# ----------------------------------------------------------- #} -->
+  <!-- JavaScript -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+    // 전역 변수 선언
+    let selectedPeriod = "";
+    let selectedBanks = [];
+    let selectedRegion = "";
+    let selectedBankGroup = "전체";
+    const allBanks = {{ banks | tojson }};
+    let currentPage = 1;
+    const itemsPerPage = 15;
+    let allProducts = [];
+
+    // 세전→세후 계산
+    function calculateAfterTax(amount, rate, months = 12) {
+      let grossInterest = amount * (rate / 100) * (months / 12);
+      let tax = grossInterest * 0.154;
+      let afterTax = amount + (grossInterest - tax);
+      return Math.round(afterTax).toLocaleString("ko-KR") + "원";
     }
-    for (let i = startPage; i <= endPage; i++) {
-      html += `<button class="btn btn-sm ${i === currentPage ? 'btn-dark' : 'btn-outline-dark'} mx-1" onclick="goToPage(${i})">${i}</button>`;
+
+    // 상품 불러오기
+    function loadProducts() {
+      let bankListParam;
+      if (selectedBanks.length > 0) {
+        bankListParam = selectedBanks;
+      } else if (selectedBankGroup !== "전체") {
+        bankListParam = allBanks[selectedBankGroup] || [];
+      } else {
+        bankListParam = [];
+      }
+
+      const banksParam =
+        bankListParam.length > 0 ? bankListParam.join("|") : "";
+
+      const rawAmount = parseFloat(
+        document.getElementById("amountInput").value.replace(/,/g, "")
+      );
+      const amount = isNaN(rawAmount) ? 0 : rawAmount;
+
+      let query = `bank=${encodeURIComponent(banksParam)}`;
+      if (selectedPeriod) {
+        query += `&period=${selectedPeriod}`;
+      }
+      if (selectedRegion) {
+        query += `&region=${encodeURIComponent(selectedRegion)}`;
+      }
+      query += `&amount=${amount}`;
+
+      fetch(`/api/{{ product_type_url }}?${query}`)
+        .then((response) => response.json())
+        .then((result) => {
+          allProducts = result.products || [];
+          currentPage = 1;
+          renderPage();
+        });
     }
-    if (endPage < totalPages) {
-      html += `<button class="btn btn-sm btn-outline-primary mx-1" onclick="goToPage(${endPage + 1})">다음</button>`;
-    }
-    html += `</div>`;
-    container.innerHTML = html;
-  }
 
-  function goToPage(page) {
-    currentPage = page;
-    renderPage();
-  }
+    // 테이블 렌더링
+    function renderPage() {
+      const tbody = document.getElementById("product-tbody");
+      tbody.innerHTML = "";
 
-  function setBankGroup(group) {
-    selectedBankGroup = group;
-    selectedBanks = [];
-    renderBankDropdown();
-    document.querySelectorAll('[data-group]').forEach(btn => btn.classList.remove('active'));
-    document.querySelector(`[data-group="${group}"]`).classList.add('active');
-  }
+      const totalPages = Math.ceil(allProducts.length / itemsPerPage);
+      const startIdx = (currentPage - 1) * itemsPerPage;
+      const endIdx = startIdx + itemsPerPage;
+      const pageItems = allProducts.slice(startIdx, endIdx);
 
-  function renderBankDropdown() {
-    const $select = $('#bankSelect');
-    $select.empty();
-    let bankList = [];
-    if (selectedBankGroup === '전체') {
-      bankList = [...new Set([...allBanks['1금융권'], ...allBanks['2금융권']])];
-    } else {
-      bankList = allBanks[selectedBankGroup] || [];
-    }
-    bankList.forEach(bank => {
-      $select.append(new Option(bank, bank));
-    });
-    $select.val(null).trigger('change');
-  }
+      const rawAmount = parseFloat(
+        document.getElementById("amountInput").value.replace(/,/g, "")
+      );
+      const amount = isNaN(rawAmount) ? 0 : rawAmount;
 
-  $(document).ready(function () {
-    $('#bankSelect').select2({
-      placeholder: "은행을 선택하세요",
-      allowClear: true,
-      width: 'resolve',
-      multiple: true
-    });
+      if (pageItems.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" class="text-center py-4">
+              조건에 맞는 상품이 없습니다.
+            </td>
+          </tr>`;
+        renderPagination(totalPages);
+        return;
+      }
 
-    $('#bankSelect').on('change', function () {
-      selectedBanks = $(this).val() || [];
-    });
+      pageItems.forEach((p, idx) => {
+        const rateStr = String(p["최고우대금리(%)"])
+          .replace("%", "")
+          .trim();
+        const rate = parseFloat(rateStr) || 0;
+        const months = parseInt(p["저축기간(개월)"]) || 12;
+        const afterTax = calculateAfterTax(amount, rate, months);
 
-    $('#regionSelect').on('change', function () {
-      selectedRegion = this.value;
-    });
+        const uid = `collapseRow${startIdx + idx}`;
 
-    document.querySelectorAll('[data-period]').forEach(btn => {
-      btn.addEventListener('click', function () {
-        selectedPeriod = this.dataset.period;
-        document.querySelectorAll('[data-period]').forEach(b => b.classList.remove('active'));
-        this.classList.add('active');
+        const rowHTML = `
+          <tr>
+            <td class="align-middle text-center">${startIdx + idx + 1}</td>
+            <td class="align-middle">
+              <img
+                src="/static/${p["logo"]}"
+                class="bank-logo me-2"
+                alt="로고"
+              />
+              ${p["금융회사명"]}
+            </td>
+            <td class="align-middle">${p["상품명"]}</td>
+            <td class="align-middle">${rate.toFixed(2)}%</td>
+            <td class="align-middle">${afterTax}</td>
+            <td class="align-middle text-center">
+              <button
+                class="btn btn-sm btn-outline-primary"
+                data-bs-toggle="collapse"
+                data-bs-target="#${uid}"
+                aria-expanded="false"
+                aria-controls="${uid}"
+              >
+                자세히 보기
+              </button>
+            </td>
+          </tr>`;
+
+        const detailHTML = `
+          <tr class="collapse" id="${uid}">
+            <td colspan="6">
+              <div class="bg-light p-3 rounded text-start">
+                <p><strong> ▶ 만기이자: </strong> ${p["만기이자"] || "정보 없음"}</p>
+                <p><strong> ▶ 우대조건: </strong> ${p["우대조건"] || "정보 없음"}</p>
+                <p><strong> ▶ 가입대상: </strong> ${p["가입대상"] || "정보 없음"}</p>
+                <p><strong> ▶ 금리유형: </strong> ${p["금리유형"] || "정보 없음"}</p>
+                <p><strong> ▶ 적립유형: </strong> ${p["적립유형"] || "정보 없음"}</p>
+                <p><strong> ▶ 저축기간: </strong> ${p["저축기간(개월)"] || "정보 없음"}개월</p>
+                <p><strong> ▶ 금융권: </strong> ${p["금융권"] || "정보 없음"}</p>
+                <p><strong> ▶ 상환 방식: </strong> ${p["상환 방식"] || "정보 없음"}</p>
+                <div class="text-end mt-2">
+                  <button
+                    class="btn btn-sm btn-secondary"
+                    onclick="bootstrap.Collapse.getOrCreateInstance(document.getElementById('${uid}')).hide()"
+                  >
+                    닫기
+                  </button>
+                </div>
+              </div>
+            </td>
+          </tr>`;
+
+        tbody.insertAdjacentHTML("beforeend", rowHTML + detailHTML);
       });
+
+      renderPagination(totalPages);
+    }
+
+    // 페이지네이션
+    function renderPagination(totalPages) {
+      const container = document.getElementById("pagination-container");
+      container.innerHTML = "";
+
+      if (totalPages <= 1) {
+        return;
+      }
+
+      const prevBtn = document.createElement("button");
+      prevBtn.textContent = "이전";
+      prevBtn.className = "page-btn me-1";
+      prevBtn.disabled = currentPage === 1;
+      prevBtn.onclick = () => {
+        if (currentPage > 1) {
+          currentPage--;
+          renderPage();
+        }
+      };
+      container.appendChild(prevBtn);
+
+      const maxVisible = 5;
+      const startPage =
+        Math.floor((currentPage - 1) / maxVisible) * maxVisible + 1;
+      const endPage = Math.min(startPage + maxVisible - 1, totalPages);
+      for (let i = startPage; i <= endPage; i++) {
+        const btn = document.createElement("button");
+        btn.textContent = i;
+        btn.className = "page-btn mx-1" + (i === currentPage ? " active" : "");
+        btn.onclick = () => {
+          currentPage = i;
+          renderPage();
+        };
+        container.appendChild(btn);
+      }
+
+      const nextBtn = document.createElement("button");
+      nextBtn.textContent = "다음";
+      nextBtn.className = "page-btn ms-1";
+      nextBtn.disabled = currentPage === totalPages;
+      nextBtn.onclick = () => {
+        if (currentPage < totalPages) {
+          currentPage++;
+          renderPage();
+        }
+      };
+      container.appendChild(nextBtn);
+    }
+
+    // 은행 그룹 토글
+    function setBankGroup(group) {
+      selectedBankGroup = group;
+      selectedBanks = [];
+      renderBankDropdown();
+      document
+        .querySelectorAll(".bank-group-btns .btn")
+        .forEach((btn) => btn.classList.remove("btn-active"));
+      document.getElementById(`group-btn-${group}`).classList.add("btn-active");
+    }
+
+    // Select2 은행 드롭다운 렌더링
+    function renderBankDropdown() {
+      const $select = $("#bankSelect");
+      $select.empty();
+
+      let bankList = [];
+      if (selectedBankGroup === "전체") {
+        bankList = [
+          ...new Set([...allBanks["1금융권"], ...allBanks["2금융권"]]),
+        ];
+      } else {
+        bankList = allBanks[selectedBankGroup] || [];
+      }
+
+      bankList.forEach((bank) => {
+        $select.append(new Option(bank, bank));
+      });
+      $select.val(null).trigger("change");
+    }
+
+    // 문서 준비 후 이벤트 바인딩
+    $(document).ready(function () {
+      $("#bankSelect").select2({
+        placeholder: "은행을 선택하세요",
+        allowClear: true,
+        width: "100%",
+        multiple: true,
+      });
+
+      $("#bankSelect").on("change", function () {
+        selectedBanks = $(this).val() || [];
+      });
+
+      $("#periodSelect").on("change", function () {
+        selectedPeriod = this.value;
+      });
+
+      $("#regionSelect").on("change", function () {
+        selectedRegion = this.value;
+      });
+
+      // 이제 “검색” 버튼은 <form> 안의 submit이므로 아래 코드는 form에 묶어서 처리합니다.
+      $("#filterForm").on("submit", function (e) {
+        e.preventDefault();
+        // 예치금 input에 있는 콤마(,) 제거
+        amountInput.value = amountInput.value.replace(/,/g, "");
+        // 상품 불러오기 로직 실행
+        loadProducts();
+      });
+
+      setBankGroup("전체");
+      loadProducts();
     });
 
-    document.getElementById('searchBtn').addEventListener('click', loadProducts);
-
-    setBankGroup('전체');
-
-    // ✅ 기본 10개 상품 자동 로드
-    loadProducts();
-  });
-</script>
+    // 예치금 입력 자동 콤마 포맷팅
+    const amountInput = document.getElementById("amountInput");
+    function formatWithCommas(str) {
+      const numOnly = str.replace(/[^0-9]/g, "");
+      if (numOnly === "") return "";
+      return parseInt(numOnly, 10).toLocaleString("ko-KR");
+    }
+    amountInput.addEventListener("input", (e) => {
+      const formatted = formatWithCommas(e.target.value);
+      e.target.value = formatted;
+    });
+  </script>
 {% endblock %}
