@@ -4,22 +4,17 @@ import re
 from urllib.parse import unquote
 import logging
 import os
-
 from flask import make_response
-# 로깅 설정
-#app = Flask(__name__, template_folder='templates', static_folder='../static')
-app = Flask(__name__)
 
+# 로깅 설정
+app = Flask(__name__)
 
 ## csv, excel 파일 경로 설정 (vercel 디렉토리 구조로)
 BASE_DIR = os.path.dirname(__file__)  # api/ 폴더의 절대경로
-
 def load_csv(filename):
     return pd.read_csv(os.path.join(BASE_DIR, filename))
-
 def load_excel(filename):
     return pd.read_excel(os.path.join(BASE_DIR, filename), engine='openpyxl')
-
 # pd.read_csv -> load_csv 변경
 # pd.read_csv -> load_excel 변경
 
@@ -710,6 +705,3 @@ def loan_recommend():
 
     return render_template("loan_result.html", recommendations=recommendations)
 
-
-#if __name__ == '__main__':
-#    app.run(debug=True)
