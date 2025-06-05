@@ -1,3 +1,17 @@
+
+@font-face {
+  font-family: 'NoonnuBasicGothic';
+  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noon-2410@1.0/NoonnuBasicGothicRegular.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+}
+html, body {
+  margin: 0;
+  height: 100%;
+  font-family: 'NoonnuBasicGothic', Helvetica, sans-serif;
+}
+
+
 .frame {
   background-color: #ffffff;
   display: flex;
@@ -18,7 +32,7 @@
   height: 46px;
   top: 56px;
   left: 1304px;
-  font-family: "눈누 기초고딕 Regular-Regular", Helvetica;
+  font-family: 'NoonnuBasicGothic', Helvetica;
   color: #000000;
   font-size: 28px;
   text-align: center;
@@ -33,7 +47,7 @@
   height: 45px;
   top: 56px;
   left: 978px;
-  font-family: "눈누 기초고딕 Regular-Regular", Helvetica;
+  font-family: 'NoonnuBasicGothic', Helvetica;
   color: #000000;
   font-size: 28px;
   text-align: center;
@@ -48,7 +62,7 @@
   height: 45px;
   top: 56px;
   left: 1141px;
-  font-family: "눈누 기초고딕 Regular-Regular", Helvetica;
+  font-family: 'NoonnuBasicGothic', Helvetica;
   color: #000000;
   font-size: 28px;
   text-align: center;
@@ -63,7 +77,7 @@
   height: 46px;
   top: 56px;
   left: 1468px;
-  font-family: "눈누 기초고딕 Regular-Regular", Helvetica;
+  font-family: 'NoonnuBasicGothic', Helvetica;
   color: #000000;
   font-size: 28px;
   text-align: center;
@@ -153,7 +167,7 @@
   height: 23px;
   top: 8px;
   left: 49px;
-  font-family: "눈누 기초고딕 Regular-Regular", Helvetica;
+  font-family: 'NoonnuBasicGothic', Helvetica;
   color: #ffffff;
   font-size: 18px;
   text-align: center;
@@ -249,10 +263,10 @@
   height: 30px;
   top: 209px;
   left: 1135px;
-  font-family: "DXSiingwaNa-Regular", Helvetica;
-  font-weight: 400;
+  font-family: 'NoonnuBasicGothic', sans-serif;
+  font-weight: 300;
   color: #000000;
-  font-size: 24px;
+  font-size: 28px;
   letter-spacing: 0;
   line-height: 31.2px;
   white-space: nowrap;
@@ -345,7 +359,7 @@
   height: 47px;
   top: 0;
   left: 0;
-  font-family: "눈누 기초고딕 Regular-Regular", Helvetica;
+  font-family: 'NoonnuBasicGothic', Helvetica;
   font-weight: 400;
   color: #000000c7;
   font-size: 18px;
@@ -360,7 +374,7 @@
   width: 504px;
   height: 47px;
   left: 0;
-  font-family: "눈누 기초고딕 Regular-Regular", Helvetica;
+  font-family: 'NoonnuBasicGothic', Helvetica;
   font-weight: 400;
   color: #000000c7;
   font-size: 18px;
@@ -431,7 +445,7 @@
   width: 504px;
   height: 47px;
   left: 0;
-  font-family: "눈누 기초고딕 Regular-Regular", Helvetica;
+  font-family: 'NoonnuBasicGothic', Helvetica;
   font-weight: 400;
   color: #000000c7;
   font-size: 18px;
@@ -454,7 +468,7 @@
   height: 47px;
   top: 47px;
   left: 504px;
-  font-family: "눈누 기초고딕 Regular-Regular", Helvetica;
+  font-family: 'NoonnuBasicGothic', Helvetica;
   color: transparent;
   font-size: 28px;
   text-align: center;
@@ -481,7 +495,7 @@
   height: 47px;
   top: 0;
   left: 505px;
-  font-family: "눈누 기초고딕 Regular-Regular", Helvetica;
+  font-family: 'NoonnuBasicGothic', Helvetica;
   color: #676464d9;
   font-size: 18px;
   text-align: center;
