@@ -16,7 +16,6 @@
     justify-content: center;
   }
 
-  /* 지도 영역 */
   #mapdiv {
     width: 100%;
     max-width: 1000px;
@@ -35,16 +34,23 @@
   svg path {
     stroke: #333;
     stroke-width: 1;
-    fill: #95dc61;
+    fill: #ccc !important; /* 기본 색상: 회색 */
     transition: fill 0.2s ease;
     cursor: pointer;
+    pointer-events: all;
   }
 
   svg path:hover {
-    fill: #70c149;
+    fill: #999; /* hover 시 연회색 강조 */
   }
 
-  /* 오른쪽 정보 카드 */
+  .region-label {
+    font-family: 'Nanum Gothic', sans-serif;
+    font-size: 13px;
+    font-weight: bold;
+    pointer-events: none;
+  }
+
   .col-lg-4 {
     background-color: #ffffff;
     padding: 25px;
@@ -79,7 +85,6 @@
     background-color: #e7f9f0;
   }
 
-  /* 툴팁 */
   .region-tooltip {
     position: absolute;
     background: #222;
@@ -93,7 +98,6 @@
     pointer-events: none;
   }
 
-  /* 모바일 대응 */
   @media (max-width: 768px) {
     .row {
       flex-direction: column;
@@ -120,24 +124,24 @@
 <div class="row">
   <div class="col-lg-8">
     <div id="mapdiv">
-      {% include 'svg_map_only.html' %}
+      {% include '전국_시도_전세지도_인터랙티브.html' %}
     </div>
   </div>
   <div class="col-lg-4">
-    <h3 id="selected-region">📍 지역: 선택X</h3>
-    <p id="avg-price">💰 평균 주택 전세가: -</p>
-    <h4 class="mt-4">📌 최고 금리 적금상품</h4>
+    <h3 id="selected-region"> 경기: 선택X</h3>
+    <p id="avg-price"> 평균 주태 전세가: -</p>
+    <h4 class="mt-4"> 최고 금리 적금생품</h4>
     <ul id="savings-list" class="list-group"></ul>
   </div>
 </div>
 
-<!-- 툴팁 -->
 <div class="region-tooltip" id="tooltip"></div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-  const paths = document.querySelectorAll('svg path');
+  const paths = document.querySelectorAll('svg path, polyline');
   const tooltip = document.getElementById('tooltip');
+  let selectedPath = null;
 
   paths.forEach(path => {
     const title = path.getAttribute('id');
@@ -157,19 +161,31 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     path.addEventListener('click', function () {
-      const region = title.replace("특별시", "").replace("광역시", "").replace("도", "도").trim();
-      document.getElementById('selected-region').innerText = '📍 지역: ' + region;
+      if (selectedPath) {
+        selectedPath.style.fill = '#ccc'; 
+      }
+
+      path.style.fill = '#555'; // 진한 회색으로 강조
+      selectedPath = path;
+
+      const region = title.replace("특별시", "").replace("광역시", "").replace(" 원", "").replace(" 도", "").trim();
+      document.getElementById('selected-region').innerText = ' 지역: ' + region;
 
       fetch(`/plus/region-data?region=${region}`)
         .then(res => res.json())
         .then(data => {
-          document.getElementById('avg-price').innerText = '💰 평균 전세가: ' + data.price + '만원';
+          document.getElementById('avg-price').innerText = ' 평균 전세가: ' + data.price + '만원';
           const list = document.getElementById('savings-list');
           list.innerHTML = '';
           data.products.forEach(p => {
             const li = document.createElement('li');
             li.className = 'list-group-item';
-            li.innerText = `${p.상품명} (${p['최고우대금리(%)']}%) - ${p.금융회사명}`;
+            li.innerHTML = `
+              <strong>${p.상품명}</strong> (${p["최고우대금리(%)"]}%) - ${p.금융회사명}<br/>
+              <span style="font-size: 0.9rem; color: #555;">
+                ${p.기간}개월간 매달 약 <strong>${p.월저축금}만원</strong> 저축
+              </span>
+            `;
             list.appendChild(li);
           });
         });
