@@ -127,7 +127,6 @@ loan_data = pd.concat(
     ignore_index=True
 )
 
-loan_data['대출유형'] = loan_data['상품명'].apply(classify_loan_type)
 loan_data["logo"] = loan_data["금융회사명"].apply(logo_filename)
 # 지역 기본 필터 함수
 def filter_products(df, period, bank, region):
