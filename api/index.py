@@ -5,14 +5,11 @@ import re
 from urllib.parse import unquote
 import logging
 import os
+import pdfkit
 from flask import make_response
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
-from huggingface_hub import InferenceClient
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
-
 app = Flask(__name__)
-
 
 # ============================================
 # 1. 공통 유틸 – 은행 로고 경로 -----------------------------------
@@ -1608,6 +1605,59 @@ def format_currency(value, symbol='₩'):
     except:
         return value
 
+@app.route('/plus/compare/pdf', methods=['POST'])
+def download_pdf():
+    try:
+        bank1 = request.form['bank1']
+        product1 = request.form['product1']
+        bank2 = request.form['bank2']
+        product2 = request.form['product2']
+        amount = int(request.form['amount'])
+        months = int(request.form['months'])
+        product_type = request.form.get('product_type', 'savings')
+
+        df = pd.concat([deposit_tier1, deposit_tier2] if product_type == 'deposits' else [savings_tier1, savings_tier2])
+        item1 = df[(df['금융회사명'] == bank1) & (df['상품명'] == product1)].iloc[0]
+        item2 = df[(df['금융회사명'] == bank2) & (df['상품명'] == product2)].iloc[0]
+
+        def calc_total(item):
+            try:
+                rate = float(item['최고우대금리(%)']) / 100
+            except:
+                rate = 0.0
+            before_tax = amount * months + amount * (months + 1) / 2 * rate / 12
+            tax = before_tax * 0.154
+            after_tax = before_tax - tax
+            return {
+                '상품명': item['상품명'],
+                '금융회사명': item['금융회사명'],
+                '금리': item['최고우대금리(%)'],
+                '세전이자': round(before_tax - amount * months),
+                '이자과세': round(tax),
+                '세후이자': round(after_tax - amount * months),
+                '실수령액': round(after_tax)
+            }
+
+        result1 = calc_total(item1)
+        result2 = calc_total(item2)
+        gap = abs(result1['실수령액'] - result2['실수령액'])
+        better = result1['금융회사명'] if result1['실수령액'] > result2['실수령액'] else result2['금융회사명']
+
+        rendered = render_template("compare_pdf.html", result1=result1, result2=result2, gap=gap, better=better)
+
+        # ✅ wkhtmltopdf 경로 지정 (윈도우 기준)
+        path_wkhtmltopdf = r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"
+        config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
+
+        pdf = pdfkit.from_string(rendered, False, configuration=config)
+
+        response = make_response(pdf)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = 'attachment; filename=compare_result.pdf'
+        return response
+    except Exception as e:
+        print(f"PDF 생성 오류: {e}")
+        return "PDF 생성 중 오류가 발생했습니다.", 500
 
 # 상품을 모아 페이지
 @app.route('/plus/roadmap')
@@ -1623,31 +1673,59 @@ def roadmap():
 @app.route('/guide')
 def guide_moa():
     return redirect('/plus/calculator')
-# ──────────────────────────────────────────────
-# 💡 ① 한 번만 생성 – 재사용
-HF_MODEL_ID = "soochang2/fin_chat"   # ← 여러분 레포
-HF_TOKEN    = os.getenv("REMOVED")             # private 이면 필수
-hf_client   = InferenceClient(HF_MODEL_ID, token=HF_TOKEN)
-# ──────────────────────────────────────────────
 
-#  챗봇 API 라우트
+#########################################################
+# 모델
+#########################################################
+
+# ✅ 모델 및 토크나이저 불러오기 (Hugging Face 업로드 모델)
+MODEL_NAME = "soochang2/fin_chat"
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+model = AutoModelForCausalLM.from_pretrained(MODEL_NAME)
+model.eval()
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model.to(device)
+
+# ✅ 첫 문장 정제 함수
+import re
+
+def clean_response(text, prompt):
+    # ① 질문(prompt) 제거
+    if prompt in text:
+        text = text.split(prompt, 1)[-1]
+
+    # ② 챗봇: 이라는 표현 제거
+    text = text.replace("챗봇:", "").replace("는?", "").replace("?", "").strip()
+
+    # ③ 첫 문장만 추출 (마침표, 물음표 등으로 구분)
+    match = re.search(r'[^.!?。]*[.!?。]', text)
+    if match:
+        return match.group(0).strip()
+
+    # 마침표 없으면 \n 기준 분리
+    return text.split("\n")[0].strip()
+
+# ✅ 챗봇 API 라우트
 @app.route("/chat", methods=["POST"])
 def chat():
-    data   = request.get_json(silent=True) or {}
-    prompt = (data.get("message") or "").strip()
+    data = request.get_json()
+    prompt = data.get("message", "")
+    input_ids = tokenizer.encode(prompt, return_tensors="pt").to(device)
 
-    if not prompt:
-        return jsonify({"error": "message 가 비어있습니다"}), 400
+    with torch.no_grad():
+        output = model.generate(
+    input_ids,
+    max_new_tokens=128,
+    do_sample=True,  # 이게 있어야 temperature/top_p 적용됨
+    temperature=0.7,
+    top_p=0.95,
+    no_repeat_ngram_size=3,
+    repetition_penalty=1.5,
+    eos_token_id=tokenizer.eos_token_id,
+    pad_token_id=tokenizer.pad_token_id,
+    attention_mask=(input_ids != tokenizer.pad_token_id).long()
+)
 
-    # Hugging Face Inference API 호출
-    res = hf_client.text_generation(
-        prompt,
-        max_new_tokens      = 128,
-        temperature         = 0.7,
-        top_p               = 0.95,
-        repetition_penalty  = 1.5,
-    )
-    generated = res[0]["generated_text"]
-    cleaned   = clean_response(generated, prompt)
-
+    decoded = tokenizer.decode(output[0], skip_special_tokens=True)
+    cleaned = clean_response(decoded, prompt)
     return jsonify({"response": cleaned})
