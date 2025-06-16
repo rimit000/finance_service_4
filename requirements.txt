@@ -1,7 +1,4 @@
-Flask==3.1.0
-pandas==2.2.3
-urllib3==2.3.0
-openpyxl
-huggingface_hub>=0.22
-transformers
-requests
+Flask==2.3.3
+pandas==2.0.3
+urllib3==2.0.4
+openpyxl==3.1.2
