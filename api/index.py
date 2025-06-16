@@ -1664,4 +1664,3 @@ def roadmap():
 @app.route('/guide')
 def guide_moa():
     return redirect('/plus/calculator')
-
