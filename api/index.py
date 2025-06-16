@@ -8,6 +8,9 @@ import os
 from flask import make_response
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
+
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
 app = Flask(__name__)
 
 # ============================================
