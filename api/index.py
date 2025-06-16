@@ -1678,42 +1678,34 @@ def clean_response(text, prompt):
     return text.split("\n")[0].strip()
 
 # ✅ 챗봇 API 라우트
+# 새로운 챗봇 API (권장)
+from huggingface_hub import InferenceClient
+
 @app.route("/chat", methods=["POST"])
 def chat():
     try:
         data = request.get_json()
         prompt = data.get("message", "")
         
-        # Vercel 환경이거나 모델이 없으면 에러 반환
-        if not model or not tokenizer:
-            return jsonify({
-                "response": "죄송합니다. 현재 AI 챗봇 서비스를 이용할 수 없습니다. 나중에 다시 시도해주세요.",
-                "error": "Model not available"
-            })
+        # Hugging Face Inference API 사용
+        client = InferenceClient(
+            model="soochang2/fin_chat",
+            token=os.environ.get("HUGGINGFACE_TOKEN")  # 환경변수로 설정
+        )
         
-        input_ids = tokenizer.encode(prompt, return_tensors="pt").to(device)
+        response = client.text_generation(
+            prompt,
+            max_new_tokens=128,
+            temperature=0.7,
+            return_full_text=False
+        )
         
-        with torch.no_grad():
-            output = model.generate(
-                input_ids,
-                max_new_tokens=128,
-                do_sample=True,
-                temperature=0.7,
-                top_p=0.95,
-                no_repeat_ngram_size=3,
-                repetition_penalty=1.5,
-                eos_token_id=tokenizer.eos_token_id,
-                pad_token_id=tokenizer.pad_token_id,
-                attention_mask=(input_ids != tokenizer.pad_token_id).long()
-            )
-        
-        decoded = tokenizer.decode(output[0], skip_special_tokens=True)
-        cleaned = clean_response(decoded, prompt)
+        cleaned = clean_response(response, prompt)
         return jsonify({"response": cleaned})
         
     except Exception as e:
         print(f"챗봇 오류: {e}")
         return jsonify({
-            "response": "죄송합니다. 처리 중 오류가 발생했습니다.",
+            "response": "죄송합니다. AI 서비스 연결에 문제가 있습니다.",
             "error": str(e)
         }), 500
