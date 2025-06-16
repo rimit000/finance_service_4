@@ -1621,33 +1621,4 @@ def roadmap():
 def guide_moa():
     return redirect('/plus/calculator')
 
-#########################################################
-# 모델
-#########################################################
 
-
-
-
-
-# ✅ 첫 문장 정제 함수
-import re
-
-def clean_response(text, prompt):
-    # ① 질문(prompt) 제거
-    if prompt in text:
-        text = text.split(prompt, 1)[-1]
-
-    # ② 챗봇: 이라는 표현 제거
-    text = text.replace("챗봇:", "").replace("는?", "").replace("?", "").strip()
-
-    # ③ 첫 문장만 추출 (마침표, 물음표 등으로 구분)
-    match = re.search(r'[^.!?。]*[.!?。]', text)
-    if match:
-        return match.group(0).strip()
-
-    # 마침표 없으면 \n 기준 분리
-    return text.split("\n")[0].strip()
-
-# ✅ 챗봇 API 라우트
-# 새로운 챗봇 API (권장)
-from huggingface_hub import InferenceClient
