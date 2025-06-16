@@ -1626,10 +1626,34 @@ def guide_moa():
 # 모델
 #########################################################
 
-# ✅ 모델 및 토크나이저 불러오기 (Hugging Face 업로드 모델)
-MODEL_NAME = "soochang2/fin_chat"
-tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-model = AutoModelForCausalLM.from_pretrained(MODEL_NAME)
+# 수정된 코드
+try:
+    from transformers import AutoTokenizer, AutoModelForCausalLM
+    import torch
+    
+    # Vercel에서는 모델 로딩 제한
+    if os.environ.get('VERCEL_ENV'):
+        # Vercel 환경에서는 API 호출만 사용
+        tokenizer = None
+        model = None
+        device = None
+        print("Vercel 환경: 모델 로딩 생략")
+    else:
+        MODEL_NAME = "soochang2/fin_chat"
+        tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+        model = AutoModelForCausalLM.from_pretrained(MODEL_NAME)
+        model.eval()
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model.to(device)
+        print("로컬 환경: 모델 로딩 완료")
+        
+except ImportError:
+    tokenizer = None
+    model = None
+    device = None
+    print("Transformers 라이브러리 없음")
+
+
 model.eval()
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
@@ -1656,24 +1680,40 @@ def clean_response(text, prompt):
 # ✅ 챗봇 API 라우트
 @app.route("/chat", methods=["POST"])
 def chat():
-    data = request.get_json()
-    prompt = data.get("message", "")
-    input_ids = tokenizer.encode(prompt, return_tensors="pt").to(device)
-
-    with torch.no_grad():
-        output = model.generate(
-    input_ids,
-    max_new_tokens=128,
-    do_sample=True,  # 이게 있어야 temperature/top_p 적용됨
-    temperature=0.7,
-    top_p=0.95,
-    no_repeat_ngram_size=3,
-    repetition_penalty=1.5,
-    eos_token_id=tokenizer.eos_token_id,
-    pad_token_id=tokenizer.pad_token_id,
-    attention_mask=(input_ids != tokenizer.pad_token_id).long()
-)
-
-    decoded = tokenizer.decode(output[0], skip_special_tokens=True)
-    cleaned = clean_response(decoded, prompt)
-    return jsonify({"response": cleaned})
+    try:
+        data = request.get_json()
+        prompt = data.get("message", "")
+        
+        # Vercel 환경이거나 모델이 없으면 에러 반환
+        if not model or not tokenizer:
+            return jsonify({
+                "response": "죄송합니다. 현재 AI 챗봇 서비스를 이용할 수 없습니다. 나중에 다시 시도해주세요.",
+                "error": "Model not available"
+            })
+        
+        input_ids = tokenizer.encode(prompt, return_tensors="pt").to(device)
+        
+        with torch.no_grad():
+            output = model.generate(
+                input_ids,
+                max_new_tokens=128,
+                do_sample=True,
+                temperature=0.7,
+                top_p=0.95,
+                no_repeat_ngram_size=3,
+                repetition_penalty=1.5,
+                eos_token_id=tokenizer.eos_token_id,
+                pad_token_id=tokenizer.pad_token_id,
+                attention_mask=(input_ids != tokenizer.pad_token_id).long()
+            )
+        
+        decoded = tokenizer.decode(output[0], skip_special_tokens=True)
+        cleaned = clean_response(decoded, prompt)
+        return jsonify({"response": cleaned})
+        
+    except Exception as e:
+        print(f"챗봇 오류: {e}")
+        return jsonify({
+            "response": "죄송합니다. 처리 중 오류가 발생했습니다.",
+            "error": str(e)
+        }), 500
