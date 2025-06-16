@@ -6,16 +6,7 @@ from urllib.parse import unquote
 import logging
 import os
 from flask import make_response
-try:
-    from transformers import AutoTokenizer, AutoModelForCausalLM
-    import torch
-    TRANSFORMERS_AVAILABLE = True
-except ImportError:
-    print("Transformers not available - using fallback")
-    TRANSFORMERS_AVAILABLE = False
-    AutoTokenizer = None
-    AutoModelForCausalLM = None
-    torch = None
+
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
@@ -1634,25 +1625,7 @@ def guide_moa():
 # 모델
 #########################################################
 
-if TRANSFORMERS_AVAILABLE:
-    try:
-        MODEL_NAME = "soochang2/fin_chat"
-        tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-        model = AutoModelForCausalLM.from_pretrained(MODEL_NAME)
-        model.eval()
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model.to(device)
-        print("✅ 모델 로드 성공")
-    except Exception as e:
-        print(f"❌ 모델 로드 실패: {e}")
-        tokenizer = None
-        model = None
-        device = None
-else:
-    tokenizer = None
-    model = None
-    device = None
-    print("❌ Transformers 라이브러리 없음")
+
 
 
 
@@ -1678,25 +1651,3 @@ def clean_response(text, prompt):
 # ✅ 챗봇 API 라우트
 # 새로운 챗봇 API (권장)
 from huggingface_hub import InferenceClient
-
-@app.route("/chat", methods=["POST"])
-def chat():
-    try:
-        data = request.get_json()
-        prompt = data.get("message", "")
-        
-        # 모델이 없으면 기본 응답
-        if not model or not tokenizer or not TRANSFORMERS_AVAILABLE:
-            return jsonify({
-                "response": "안녕하세요! 금융 관련 질문이 있으시면 언제든 말씀해 주세요. (현재 AI 모델 연결 중입니다)"
-            })
-        
-        # 나머지 코드는 그대로...
-        input_ids = tokenizer.encode(prompt, return_tensors="pt").to(device)
-        # ... 기존 모델 실행 코드
-        
-    except Exception as e:
-        print(f"챗봇 오류: {e}")
-        return jsonify({
-            "response": "죄송합니다. 현재 서비스에 문제가 있습니다."
-        })
