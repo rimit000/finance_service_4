@@ -252,7 +252,7 @@ def loans_page():
     max_limit = request.args.get('maxLimit', type=int)  # 
 
     if loan_data.empty:
-        return render_template('loans_list.html', ...)
+        return "대출 데이터를 불러올 수 없습니다.", 500
 
     df = loan_data.copy()
     df['상품유형'] = df['대출유형']
